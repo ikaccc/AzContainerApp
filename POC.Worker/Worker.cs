@@ -2,10 +2,12 @@
 
 public class Worker : BackgroundService
 {
+    private readonly IConfiguration _configuration;
     private readonly ILogger<Worker> _logger;
 
-    public Worker(ILogger<Worker> logger)
+    public Worker(IConfiguration configuration, ILogger<Worker> logger)
     {
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -13,10 +15,13 @@ public class Worker : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            if (_logger.IsEnabled(LogLevel.Information))
-            {
-                _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
-            }
+            var statusEndpointUri = _configuration.GetValue<string>("STATUS_ENDPOINT_URI");
+
+            using var httpClient = new HttpClient();
+            var statusMessage = await httpClient.GetStringAsync(statusEndpointUri, stoppingToken);
+
+            _logger.LogInformation(statusMessage, DateTimeOffset.Now);
+            
             await Task.Delay(1000, stoppingToken);
         }
     }
